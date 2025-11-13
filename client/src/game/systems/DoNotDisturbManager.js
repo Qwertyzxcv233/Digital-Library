@@ -15,6 +15,8 @@ export default class DoNotDisturbManager {
     this.scene = scene;
     this.isEnabled = false;
     this.pomodoroTriggered = false; // 是否由番茄钟触发
+    // 保存被勿扰临时修改的音量值（不会立即持久化）
+    this._savedBgmVolume = null;
     
     // 🆕 默认设置
     this.defaultSettings = {
@@ -216,7 +218,23 @@ export default class DoNotDisturbManager {
       }
     }
     
-    console.log('🔇 声音设置已更新');
+    console.log(' 声音设置已更新');
+    // 🆕 额外：勿扰模式下静音 BGM（临时，不覆盖用户设置）
+    try {
+      // 保存原始 BGM 值（仅第一次开启时保存）
+      if (this._savedBgmVolume === null && Number.isFinite(soundManager.volumes.bgm)) {
+        this._savedBgmVolume = soundManager.volumes.bgm;
+      }
+
+      // 直接修改内存中 bgm 值并更新正在播放的实例音量（不写入 LocalStorage）
+      soundManager.volumes.bgm = 0;
+      if (soundManager.bgmInstance) {
+        soundManager.bgmInstance.setVolume((Number.isFinite(soundManager.volumes.master) ? soundManager.volumes.master : 1) * 0);
+      }
+      console.log('🔕 勿扰模式：BGM 已静音（临时）');
+    } catch (e) {
+      console.warn('⚠️ 尝试静音 BGM 时出错', e);
+    }
   }
   
   /**
@@ -251,6 +269,23 @@ export default class DoNotDisturbManager {
     }
     
     console.log('🔊 声音设置已恢复');
+    // 🆕 恢复之前保存的 BGM 音量（如果存在），不自动持久化除非用户手动调整
+    try {
+      if (this._savedBgmVolume !== null) {
+        // 恢复到内存值
+        soundManager.volumes.bgm = this._savedBgmVolume;
+        // 更新正在播放的实例
+        if (soundManager.bgmInstance) {
+          const m = Number.isFinite(soundManager.volumes.master) ? soundManager.volumes.master : 1;
+          const b = Number.isFinite(soundManager.volumes.bgm) ? soundManager.volumes.bgm : 1;
+          soundManager.bgmInstance.setVolume(m * b);
+        }
+        console.log(`🔔 勿扰结束：BGM 恢复到 ${this._savedBgmVolume}`);
+        this._savedBgmVolume = null;
+      }
+    } catch (e) {
+      console.warn('⚠️ 恢复 BGM 音量时出错', e);
+    }
   }
   
   /**
