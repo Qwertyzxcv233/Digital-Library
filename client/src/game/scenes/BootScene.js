@@ -96,6 +96,10 @@ export default class BootScene extends Phaser.Scene {
     this.load.audio('ambient-discussion', 'assets/sounds/keyboard.wav');   // 占位
     this.load.audio('ambient-leisure', 'assets/sounds/keyboard.wav');      // 占位
     this.load.audio('ambient-public', 'assets/sounds/ambient-public.wav');
+      // 背景音乐（BGM）
+    this.load.audio('bgm-01', 'assets/sounds/DL_bgm1.mp3');
+    this.load.audio('bgm-02', 'assets/sounds/DL_bgm2.mp3');
+    this.load.audio('bgm-03', 'assets/sounds/DL_bgm3.mp3');
     
     // 脚步声
     this.load.audio('footstep-01', 'assets/sounds/footstep-01.wav');

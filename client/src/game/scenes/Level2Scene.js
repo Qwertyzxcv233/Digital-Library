@@ -49,6 +49,12 @@ export default class Level2Scene extends Phaser.Scene {
     // 🆕 初始化本地脚步声池（在资源加载完成后）
     this.soundManager.initLocalFootstepPool();
 
+  // 🆕 初始化 BGM 播放列表（使用三首 BGM：DL_bgm1/2/3）
+  this.soundManager.initBgm(['bgm-01','bgm-02','bgm-03']);
+
+  // 🆕 安排页面打开 30 秒后开始播放 BGM
+  this.soundManager.scheduleBgmStart(30000);
+
     // 🆕 创建勿扰模式管理器
     this.dndManager = new DoNotDisturbManager(this);
 

@@ -28,6 +28,7 @@ export default class SoundManager {
     // 音量配置（默认值）
     this.volumes = {
       master: 1.0,
+      bgm: 0.6,
       ambient: 0.3,
       effects: 0.8,
       footsteps: 0.5
@@ -90,6 +91,142 @@ export default class SoundManager {
     };
     
     console.log('🎵 SoundManager 已初始化');
+  }
+
+  // ========================================
+  // 背景音乐 (BGM) 管理
+  // - 支持播放列表
+  // - 支持延时开始与歌曲间隔
+  // ========================================
+
+  /**
+   * 初始化 BGM 播放列表
+   * @param {Array<string>} playlist - Phaser 音频 key 列表
+   */
+  initBgm(playlist = []) {
+    this.bgmPlaylist = Array.isArray(playlist) ? playlist.slice() : [];
+    this.bgmIndex = 0;
+    this.bgmInstance = null; // 当前 Phaser.Sound.BaseSound 实例
+    this.bgmStartTimer = null;
+    this.bgmNextTimer = null;
+    this.bgmDelayMs = 30000; // 默认 30 秒延迟
+    console.log('🎧 BGM 已初始化，tracks:', this.bgmPlaylist);
+  }
+
+  /**
+   * 安排延迟开始 BGM（从页面/场景创建时调用）
+   * @param {number} delayMs
+   */
+  scheduleBgmStart(delayMs = 30000) {
+    // 清理已有定时器
+    this.clearBgmTimers();
+
+    this.bgmDelayMs = delayMs;
+    console.log(`🕒 将在 ${Math.floor(delayMs/1000)}s 后尝试开始播放 BGM`);
+
+    this.bgmStartTimer = setTimeout(() => {
+      this.tryStartBgm();
+    }, delayMs);
+  }
+
+  /**
+   * 尝试启动当前播放列表的当前曲目
+   * 如果浏览器阻止自动播放，会监听一次用户交互并在交互后重试
+   */
+  tryStartBgm() {
+    if (!this.bgmPlaylist || this.bgmPlaylist.length === 0) {
+      console.log('ℹ️ BGM 列表为空，跳过播放');
+      return;
+    }
+
+    // 如果场景的音频上下文处于锁定状态，先尝试播放并检测是否成功
+    try {
+      this.playCurrentBgm();
+    } catch (err) {
+      console.warn('⚠️ 尝试播放 BGM 时发生错误，等待用户交互后重试', err);
+      // 绑定一次性的交互事件，用户交互后再尝试播放
+      const retry = () => {
+        this.scene.input.off('pointerdown', retry);
+        this.scene.input.keyboard.off('keydown', retry);
+        this.playCurrentBgm();
+      };
+      this.scene.input.once('pointerdown', retry);
+      this.scene.input.once('keydown', retry);
+    }
+  }
+
+  /**
+   * 立即播放当前索引指向的曲目
+   */
+  playCurrentBgm() {
+    const key = this.bgmPlaylist[this.bgmIndex];
+    if (!key) return;
+
+    // 停止已有的 BGM 实例
+    if (this.bgmInstance) {
+      try {
+        this.bgmInstance.stop();
+        this.bgmInstance.destroy();
+      } catch (e) {}
+      this.bgmInstance = null;
+    }
+
+    console.log(`🎶 开始播放 BGM: ${key}`);
+    // 不循环单曲，由 complete 事件触发下一首
+    const masterVol = Number.isFinite(this.volumes.master) ? this.volumes.master : 1;
+    const bgmVol = Number.isFinite(this.volumes.bgm) ? this.volumes.bgm : 0.6;
+    this.bgmInstance = this.scene.sound.add(key, {
+      loop: false,
+      volume: masterVol * bgmVol // 使用 master 与 bgm 分类音量（尊重 0 值）
+    });
+
+    // 当曲目播放完成时，安排下一首（延迟 30s）
+    this.bgmInstance.once('complete', () => {
+      this.handleBgmEnded();
+    });
+
+    // 立即播放（Phaser 的 play 在许多浏览器下需要解锁，但会在用户交互后可用）
+    this.bgmInstance.play();
+  }
+
+  /**
+   * 处理 BGM 播放完毕：清理实例并在 30s 后播放下一首
+   */
+  handleBgmEnded() {
+    console.log('⏭️ BGM 播放完毕，等待 30s 播放下一首');
+    // 销毁当前实例引用（Phaser 有时会自动清理）
+    if (this.bgmInstance) {
+      try { this.bgmInstance.destroy(); } catch (e) {}
+      this.bgmInstance = null;
+    }
+
+    // 安排下一首
+    this.bgmNextTimer = setTimeout(() => {
+      this.bgmIndex = (this.bgmIndex + 1) % this.bgmPlaylist.length;
+      this.playCurrentBgm();
+    }, this.bgmDelayMs);
+  }
+
+  /**
+   * 停止并清理所有 BGM 定时器与实例
+   */
+  stopBgm() {
+    if (this.bgmInstance) {
+      try { this.bgmInstance.stop(); this.bgmInstance.destroy(); } catch (e) {}
+      this.bgmInstance = null;
+    }
+    this.clearBgmTimers();
+  }
+
+  clearBgmTimers() {
+    if (this.bgmStartTimer) {
+      clearTimeout(this.bgmStartTimer);
+      this.bgmStartTimer = null;
+    }
+    if (this.bgmNextTimer) {
+      clearTimeout(this.bgmNextTimer);
+      this.bgmNextTimer = null;
+    }
   }
   
   // ========================================
@@ -529,6 +666,17 @@ export default class SoundManager {
           this.currentAmbient.setVolume(
             config.volume * this.volumes.ambient * this.volumes.master
           );
+        }
+      }
+
+      // 如果修改了 bgm 或 master，更新当前 BGM 实例音量
+      if ((category === 'bgm' || category === 'master') && this.bgmInstance) {
+        try {
+          const m = Number.isFinite(this.volumes.master) ? this.volumes.master : 1;
+          const b = Number.isFinite(this.volumes.bgm) ? this.volumes.bgm : 1;
+          this.bgmInstance.setVolume(m * b);
+        } catch (e) {
+          console.warn('⚠️ 更新 BGM 音量失败', e);
         }
       }
     } else {

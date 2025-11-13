@@ -25,6 +25,14 @@ export default class SettingsPanel {
         description: '控制所有声音'
       },
       {
+        id: 'bgm',
+        label: '音乐',
+        icon: '🎵',
+        defaultValue: 0.6,
+        category: 'bgm',
+        description: '控制背景音乐的音量'
+      },
+      {
         id: 'ambient',
         label: '环境音',
         icon: '🌳',
