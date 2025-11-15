@@ -9,6 +9,7 @@ import InventoryUI from '../ui/InventoryUI.js'; // 🆕
 import Printer from '../entities/Printer.js'; // 🆕
 import SoundManager from '../systems/SoundManager.js'; // 🆕 导入 SoundManager
 import SettingsPanel from '../ui/SettingsPanel.js'; // ← 检查这一行
+import PomodoroPanel from '../ui/PomodoroPanel.js'; // 🆕 导入番茄钟面板
 import Gate from '../entities/Gate.js'; // 🆕 导入 Gate 类
 import DoNotDisturbManager from '../systems/DoNotDisturbManager.js'; // 🆕
 
@@ -60,6 +61,9 @@ export default class Level2Scene extends Phaser.Scene {
 
     // 🆕 创建设置面板
     this.settingsPanel = new SettingsPanel(this);
+
+    // 🆕 创建番茄钟面板（UI，但默认隐藏）
+    this.pomodoroPanel = new PomodoroPanel(this);
 
     // 🆕 绑定勿扰按钮
     const dndButton = document.getElementById('dnd-button');

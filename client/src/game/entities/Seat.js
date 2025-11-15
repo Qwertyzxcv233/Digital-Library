@@ -286,6 +286,15 @@ export default class Seat extends Interactable {
       finalY,
       this.direction
     );
+
+    // 🆕 如果是本地玩家，显示番茄钟面板（不自动开始，用户可按开始）
+    try {
+      if (player === this.scene.player && this.scene.pomodoroPanel) {
+        this.scene.pomodoroPanel.show(false);
+      }
+    } catch (e) {
+      console.warn('⚠️ 显示番茄钟时出错', e);
+    }
   }
   
   standUp(player) {
@@ -313,6 +322,15 @@ export default class Seat extends Interactable {
     
     SocketManager.emitStandUp();
     SocketManager.emitMove(player.x, player.y, player.getCurrentAnimation());
+
+    // 🆕 如果是本地玩家，隐藏番茄钟面板
+    try {
+      if (player === this.scene.player && this.scene.pomodoroPanel) {
+        this.scene.pomodoroPanel.hide();
+      }
+    } catch (e) {
+      console.warn('⚠️ 隐藏番茄钟时出错', e);
+    }
   }
   
   getStandOffset(direction) {

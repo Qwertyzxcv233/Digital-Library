@@ -296,18 +296,37 @@ export default class SoundManager {
     
     // 停止当前环境音（带淡出）
     if (this.currentAmbient) {
-      this.stopAmbient(crossfadeDuration);
+      // 🔧 保存旧的 ambient 引用，并设为 null，防止重复操作
+      const oldAmbient = this.currentAmbient;
+      this.currentAmbient = null;
+      
+      // 🔧 先杀死所有针对旧 ambient 的 tween
+      this.scene.tweens.killTweensOf(oldAmbient);
+      
+      // 🔧 淡出后停止（在回调中销毁）
+      this.scene.tweens.add({
+        targets: oldAmbient,
+        volume: 0,
+        duration: crossfadeDuration,
+        ease: 'Linear',
+        onComplete: () => {
+          if (oldAmbient && !oldAmbient.pendingRemove) {
+            oldAmbient.stop();
+            oldAmbient.destroy();
+          }
+        }
+      });
     }
     
-    // 立即创建并播放新环境音
+    // 立即创建新环境音（初始音量为 0，不播放）
     console.log(`🎵 开始播放环境音: ${config.key} (区域: ${regionType})`);
     
     this.currentAmbient = this.scene.sound.add(config.key, {
       loop: true,
-      volume: 0 // 从 0 开始，淡入
+      volume: 0 // 从 0 开始，防止突然音量
     });
     
-    // 立即播放
+    // 🔧 立即播放，确保在所有操作前都是音量 0
     this.currentAmbient.play();
     
     // 🔧 计算目标音量（考虑勿扰模式）
@@ -319,18 +338,30 @@ export default class SoundManager {
       console.log(`🔕 勿扰模式：环境音减半 (${targetVolume.toFixed(3)})`);
     }
     
-    // 淡入效果（时长与淡出相同）
-    this.scene.tweens.add({
-      targets: this.currentAmbient,
-      volume: targetVolume,
-      duration: crossfadeDuration,
-      ease: 'Linear'
+    // 🔧 使用时间延迟确保新音频稳定后再开始 tween
+    // 这给 Phaser 音频系统时间来初始化播放
+    const newAmbient = this.currentAmbient;
+    this.scene.time.delayedCall(50, () => {
+      // 再次检查 currentAmbient 未被替换
+      if (this.currentAmbient === newAmbient) {
+        // 再次确保音量为 0（防止任何中间变化）
+        newAmbient.setVolume(0);
+        
+        // 淡入效果（时长与淡出相同）
+        this.scene.tweens.add({
+          targets: newAmbient,
+          volume: targetVolume,
+          duration: crossfadeDuration,
+          ease: 'Linear'
+        });
+      }
     });
   }
   
   /**
-   * 停止环境音
+   * 停止环境音（已弃用，改用 playAmbient 的内联逻辑）
    * @param {number} fadeOutDuration - 淡出时长（毫秒）
+   * @deprecated 使用 playAmbient 替代，它已包含停止旧音频的逻辑
    */
   stopAmbient(fadeOutDuration = 500) {
     if (!this.currentAmbient) return;
