@@ -41,6 +41,8 @@ export default class PomodoroPanel {
         font-family: monospace;
         z-index: 500;
         transition: transform 0.1s;
+        flex-direction: column;
+        gap: 2px;
       }
       
       #pomodoro-btn-corner:hover {
@@ -55,6 +57,22 @@ export default class PomodoroPanel {
         box-shadow: 
           inset -2px -2px 0 rgba(0, 0, 0, 0.5),
           2px 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      
+      /* Timer display on corner button */
+      .pomodoro-corner-icon {
+        font-size: 20px;
+      }
+      
+      .pomodoro-corner-timer {
+        font-size: 10px;
+        font-family: monospace;
+        display: none;
+        line-height: 1;
+      }
+      
+      .pomodoro-corner-timer.active {
+        display: block;
       }
       
       /* Fullscreen panel */
@@ -125,7 +143,18 @@ export default class PomodoroPanel {
     // Corner button (like inventory, bottom-right area)
     this.cornerBtn = document.createElement('button');
     this.cornerBtn.id = 'pomodoro-btn-corner';
-    this.cornerBtn.textContent = '🕐';
+    
+    // Icon and timer sub-elements
+    this.cornerIcon = document.createElement('div');
+    this.cornerIcon.className = 'pomodoro-corner-icon';
+    this.cornerIcon.textContent = '🕐';
+    this.cornerBtn.appendChild(this.cornerIcon);
+    
+    this.cornerTimer = document.createElement('div');
+    this.cornerTimer.className = 'pomodoro-corner-timer';
+    this.cornerTimer.textContent = '25:00';
+    this.cornerBtn.appendChild(this.cornerTimer);
+    
     this.cornerBtn.addEventListener('click', () => this.show());
     document.body.appendChild(this.cornerBtn);
 
@@ -196,6 +225,7 @@ export default class PomodoroPanel {
     this.container.classList.add('visible');
     this.isVisible = true;
     this.isMinimized = false;
+    this.cornerTimer.classList.remove('active');
     if (autoStart) this.start();
   }
 
@@ -203,6 +233,10 @@ export default class PomodoroPanel {
     this.container.classList.remove('visible');
     this.isVisible = false;
     this.isMinimized = true;
+    // Show timer on corner button if running
+    if (this.isRunning) {
+      this.cornerTimer.classList.add('active');
+    }
   }
 
   hide() {
@@ -244,6 +278,7 @@ export default class PomodoroPanel {
   pause() {
     this.isRunning = false;
     this.startBtn.textContent = '开始';
+    this.cornerTimer.classList.remove('active');
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -255,6 +290,7 @@ export default class PomodoroPanel {
     this.isOnBreak = false;
     this.remaining = this.workDuration;
     this.statusText.textContent = `专注 ${Math.floor(this.workDuration / 60)} 分钟`;
+    this.cornerTimer.classList.remove('active');
     this.updateDisplay();
   }
 
@@ -283,6 +319,12 @@ export default class PomodoroPanel {
 
   updateDisplay() {
     this.timerDisplay.textContent = this.formatTime(this.remaining);
+    
+    // Update corner button timer when minimized and running
+    if (this.isMinimized && this.isRunning) {
+      this.cornerTimer.textContent = this.formatTime(this.remaining);
+      this.cornerTimer.classList.add('active');
+    }
   }
 
   destroy() {
