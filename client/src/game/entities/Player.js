@@ -56,6 +56,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.nameTextBorder.setOrigin(0.5);
       this.nameTextBorder.setDepth(this.nameText.depth - 1);
     }
+
+    // 🆕 简单影子（椭圆），放在玩家下方并随玩家移动和 depth 更新
+    // 使用纯色椭圆以避免额外资源依赖
+    this.shadow = scene.add.ellipse(x, y + 30, 23, 14, 0x000000, 0.35);
+    this.shadow.setOrigin(0.5);
+    // 初始 depth 基于 y，使得深度随着垂直位置变化（看起来更自然）
+    this.shadow.setDepth(y - 1);
+    //参数说明：
+
+    //40 — 影子宽度（第1个数字），越大影子越宽
+    //14 — 影子高度（第2个数字），越大影子越高
+    //0x000000 — 颜色（黑色）
+    //0.35 — 透明度（0～1，越大越不透明）
   }
   
   createAnimations() {
@@ -201,6 +214,29 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.nameTextBorder) {
       this.nameTextBorder.setPosition(this.x, this.y - 40);
     }
+    
+    // 🆕 更新影子位置、缩放与 depth
+    if (this.shadow) {
+      // shadow 跟随玩家，并略微在玩家下方
+      const shadowY = this.y + 24;
+      this.shadow.setPosition(this.x, shadowY);
+
+      // 坐下时影子更小
+      if (this.isSitting) {
+        this.shadow.setScale(0.7, 0.6);
+      } else {
+        this.shadow.setScale(1, 1);
+      }
+
+      // 使用 y 作为 depth，使前后遮挡更自然
+      const baseDepth = Math.floor(this.y);
+      this.shadow.setDepth(baseDepth - 1);
+      this.setDepth(baseDepth);
+
+      // 确保名字标签在玩家之上
+      if (this.nameTextBorder) this.nameTextBorder.setDepth(baseDepth + 2);
+      if (this.nameText) this.nameText.setDepth(baseDepth + 3);
+    }
   }
 
   getCurrentAnimation() {
@@ -245,6 +281,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // 🆕 销毁边框
     if (this.nameTextBorder) {
       this.nameTextBorder.destroy();
+    }
+    
+    // 🆕 销毁影子
+    if (this.shadow) {
+      this.shadow.destroy();
     }
     
     super.destroy();
