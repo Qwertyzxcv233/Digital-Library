@@ -41,6 +41,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     });
     this.nameText.setOrigin(0.5);
     this.nameText.setStroke('#2c1810', 2);
+    // 保证玩家、名字、影子显示顺序：shadow < player < nameText
+    // 使用较高的基础 depth 避免与地图层冲突
+    this.setDepth(1000);
+    this.nameText.setDepth(1001);
     
     // 🆕 添加侧边框效果（像素风）
     // 注意：先确保 nameText 存在
@@ -55,6 +59,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.nameTextBorder.setStrokeStyle(2, 0x8b6f47, 1);
       this.nameTextBorder.setOrigin(0.5);
       this.nameTextBorder.setDepth(this.nameText.depth - 1);
+    }
+
+    // 🆕 添加影子（ellipse），跟随玩家位置
+    // 宽度、高度和透明度可以按需调整
+    this.shadow = scene.add.ellipse(x, y + 24, 28, 16, 0x000000, 0.35);
+    this.shadow.setOrigin(0.5);
+    // 放在 nameText 之下，确保不遮挡玩家或名字
+    this.shadow.setDepth(999);
+    // 如果存在边框，将其置于名字下方但高于影子
+    if (this.nameTextBorder) {
+      this.nameTextBorder.setDepth(1000);
     }
   }
   
@@ -201,6 +216,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.nameTextBorder) {
       this.nameTextBorder.setPosition(this.x, this.y - 40);
     }
+    
+    // 🆕 更新影子位置（跟随人物）
+    if (this.shadow) {
+      this.shadow.setPosition(this.x, this.y + 24);
+      // 坐下时缩小影子，站起时恢复
+      if (this.isSitting) {
+        this.shadow.setScale(0.7, 0.6);
+      } else {
+        this.shadow.setScale(1, 1);
+      }
+    }
   }
 
   getCurrentAnimation() {
@@ -245,6 +271,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // 🆕 销毁边框
     if (this.nameTextBorder) {
       this.nameTextBorder.destroy();
+    }
+    
+    // 🆕 销毁影子
+    if (this.shadow) {
+      this.shadow.destroy();
     }
     
     super.destroy();
